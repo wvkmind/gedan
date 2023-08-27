@@ -241,8 +241,12 @@ const makeDecoder = () => {
             }
             if(songName){
                 let size = data["info"][2][1].length + songName.length;
+                var englishCount = (data["info"][2][1] + songName).replace(/[\u4e00-\u9fa5]/g, "").length;
+
+                // 统计中文字符数量
+                var chineseCount = (data["info"][2][1] + songName).match(/[\u4e00-\u9fa5]/g)?.length || 0;
                 let divString;
-                if(size>=14){
+                if((chineseCount*2+englishCount)>=21){
                     divString = {div:'<div class="dis-inline-block p-absolute over-hidd marg-4" style="animation: scrollText linear infinite;animation-duration: 20s;animation-timing-function: linear;"><div class="dis-inline-block song-styles-lis-anime p-relative"><span class="song-styles-anime-title pad-4 font-md" style="color:undefined;"> '+songName+'   </span><span class="song-styles-anime-username font-mini-md">'+data["info"][2][1]+'</span></div></div>',songName: songName};
                 }else{
                     divString = {div:'<div class="dis-inline-block p-absolute over-hidd marg-4"><div class="dis-inline-block song-styles-lis-anime p-relative"><span class="song-styles-anime-title pad-4 font-md" style="color:undefined;"> '+songName+'   </span><span class="song-styles-anime-username font-mini-md">'+data["info"][2][1]+'</span></div></div>',songName: songName};
@@ -439,7 +443,7 @@ function closeConnection() {
     padding: 0 23px 0 74px
 }
 .font-md{
-  font-size: 19px;
+  font-size: 22px;
 }
 .footer-styles-back-watch {
     box-sizing: border-box
