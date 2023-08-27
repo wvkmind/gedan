@@ -133,16 +133,42 @@ const cutBuffer = (buffer: Buffer) => {
   return bufferPacks
 }
 
-const addList = (curdivString)=>{
+const addList = (userName,englishCount,chineseCount,songName)=>{
     let itemList = document.getElementById('itemList');
     // 创建新的列表项并添加到列表中
-    let item =curdivString;
     const li = document.createElement('li');
     li.setAttribute('class', 'list-style-zero p-relative over-hidd text-nowrap font-md');
-    li.innerHTML = item.div;
+    let divString;
+    if((chineseCount*2+englishCount)>=23){
+      let length = chineseCount*2+englishCount;
+      var scrollDistance = -((length-23)*5) + "px";
+      let animation = `animation: scrollText_${length} linear infinite;`
+      
+      var dynamicKeyframes = `@keyframes scrollText_${length} {
+        0% {
+          text-indent: 0;
+        }
+        50% {
+          text-indent: ${scrollDistance};
+        }
+        100% {
+          text-indent: 0;
+        }
+      }`;
+
+      // 创建 <style> 元素并将当前 <li> 元素的动态 @keyframes 规则添加到其中
+      var styleElement = document.createElement("style");
+      styleElement.innerHTML = dynamicKeyframes;
+      document.head.appendChild(styleElement);
+      divString = {div:'<div class="dis-inline-block p-absolute over-hidd marg-4" style="'+animation+' animation-duration: 20s;animation-timing-function: linear;"><div class="dis-inline-block song-styles-lis-anime p-relative"><span class="song-styles-anime-title pad-4 font-md" style="color:undefined;"> '+songName+'   </span><span class="song-styles-anime-username font-mini-md">'+userName+'</span></div></div>',songName: songName};
+    }else{
+      divString = {div:'<div class="dis-inline-block p-absolute over-hidd marg-4"><div class="dis-inline-block song-styles-lis-anime p-relative"><span class="song-styles-anime-title pad-4 font-md" style="color:undefined;"> '+songName+'   </span><span class="song-styles-anime-username font-mini-md">'+userName+'</span></div></div>',songName: songName};
+    }
+    
+    li.innerHTML = divString.div;
     const button = document.createElement('button');
     button.setAttribute('class','btn btn1');
-    button.setAttribute('songName',item.songName);
+    button.setAttribute('songName',songName);
     button.addEventListener('click', () => {
         // 获取要复制的内容
         const content = button.getAttribute('songName');
@@ -169,7 +195,6 @@ const addList = (curdivString)=>{
     li.appendChild(button);
     const buttonDel = document.createElement('button');
     buttonDel.setAttribute('class','btn-del btn1-del');
-    buttonDel.setAttribute('index',item.index);
     buttonDel.addEventListener('click', () => {
        const li = button.parentNode;
        if(li!=null && li.parentNode!=null){
@@ -245,13 +270,9 @@ const makeDecoder = () => {
 
                 // 统计中文字符数量
                 var chineseCount = (data["info"][2][1] + songName).match(/[\u4e00-\u9fa5]/g)?.length || 0;
-                let divString;
-                if((chineseCount*2+englishCount)>=21){
-                    divString = {div:'<div class="dis-inline-block p-absolute over-hidd marg-4" style="animation: scrollText linear infinite;animation-duration: 20s;animation-timing-function: linear;"><div class="dis-inline-block song-styles-lis-anime p-relative"><span class="song-styles-anime-title pad-4 font-md" style="color:undefined;"> '+songName+'   </span><span class="song-styles-anime-username font-mini-md">'+data["info"][2][1]+'</span></div></div>',songName: songName};
-                }else{
-                    divString = {div:'<div class="dis-inline-block p-absolute over-hidd marg-4"><div class="dis-inline-block song-styles-lis-anime p-relative"><span class="song-styles-anime-title pad-4 font-md" style="color:undefined;"> '+songName+'   </span><span class="song-styles-anime-username font-mini-md">'+data["info"][2][1]+'</span></div></div>',songName: songName};
-                }
-                addList(divString);
+                let userName = data["info"][2][1];
+                
+                addList(userName,englishCount,chineseCount,songName);
             }
         }
         return { buf, type, protocol, data }
@@ -511,7 +532,7 @@ function closeConnection() {
       text-indent: 0;
     }
     50% {
-      text-indent: -20%;
+      text-indent: -85px;
     }
     100% {
       text-indent: 0px;
