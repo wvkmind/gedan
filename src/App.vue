@@ -242,7 +242,7 @@ const makeDecoder = () => {
             if(songName){
                 let size = data["info"][2][1].length + songName.length;
                 let divString;
-                if(size>=20){
+                if(size>=14){
                     divString = {div:'<div class="dis-inline-block p-absolute over-hidd marg-4" style="animation: scrollText linear infinite;animation-duration: 20s;animation-timing-function: linear;"><div class="dis-inline-block song-styles-lis-anime p-relative"><span class="song-styles-anime-title pad-4 font-md" style="color:undefined;"> '+songName+'   </span><span class="song-styles-anime-username font-mini-md">'+data["info"][2][1]+'</span></div></div>',songName: songName};
                 }else{
                     divString = {div:'<div class="dis-inline-block p-absolute over-hidd marg-4"><div class="dis-inline-block song-styles-lis-anime p-relative"><span class="song-styles-anime-title pad-4 font-md" style="color:undefined;"> '+songName+'   </span><span class="song-styles-anime-username font-mini-md">'+data["info"][2][1]+'</span></div></div>',songName: songName};
@@ -438,6 +438,9 @@ function closeConnection() {
 .font-md>.footer-styles-back-watch {
     padding: 0 23px 0 74px
 }
+.font-md{
+  font-size: 19px;
+}
 .footer-styles-back-watch {
     box-sizing: border-box
 }
@@ -562,6 +565,11 @@ function closeConnection() {
 
 li:hover button {
   display: inline-block;
+}
+body {
+  display: flex;
+  justify-content: center;
+  align-items: center;
 }
 </style>
 
