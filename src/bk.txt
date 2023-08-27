@@ -1,0 +1,233 @@
+<script setup lang="ts">
+import { Buffer } from 'buffer'
+import {brotliDecode} from "./brotli"
+import { inflate } from 'pako'
+
+var items = []
+const cutBuffer = (buffer: Buffer) => {
+  const bufferPacks: Buffer[] = []
+  let size: number
+  for (let i = 0; i < buffer.length; i += size) {
+    size = buffer.readInt32BE(i)
+    bufferPacks.push(buffer.slice(i, i + size))
+  }
+  return bufferPacks
+}
+
+const makeDecoder = () => {
+  const decoder = async (buffer: Buffer) => {
+    const packs = await Promise.all(cutBuffer(buffer)
+      .map(async buf => {
+        const body = buf.slice(16)
+        const protocol = buf.readInt16BE(6)
+        const operation = buf.readInt32BE(8)
+        function adjustArrayBuffer(arrayBuffer) {
+            const byteLength = arrayBuffer.byteLength;
+            const adjustedLength = Math.ceil(byteLength / 8) * 8;
+            if (byteLength === adjustedLength) {
+              return arrayBuffer;
+            }
+          
+            const adjustedArrayBuffer = new ArrayBuffer(adjustedLength);
+            const sourceArray = new Uint8Array(arrayBuffer);
+            const targetArray = new Uint8Array(adjustedArrayBuffer);
+            targetArray.set(sourceArray);
+          
+            return adjustedArrayBuffer;
+        }
+        let type = 'unknow'
+        if (operation === 3) {
+          type = 'heartbeat'
+        } else if (operation === 5) {
+          type = 'message'
+        } else if (operation === 8) {
+          type = 'welcome'
+        }
+        
+        let data: any
+        if (protocol === 0) {
+          data = JSON.parse(String(body))
+        }
+        if (protocol === 1 && body.length === 4) {
+          data = body.readUIntBE(0, 4)
+        }
+        if (protocol === 2) {
+            console.log("protocol2",body);
+            data = await decoder(await Buffer.from(inflate(body)))
+        }
+        if (protocol === 3) {
+            console.log("body3",body);
+            data = await decoder(Buffer.from(brotliDecode(body)))
+        }
+        if(protocol == 0 && data['cmd']=="DANMU_MSG"){
+            console.log("data_result",data["info"]);
+            items.push({name: data["info"][2][1],name2:data["info"][1]})
+        }
+        return { buf, type, protocol, data }
+      }))
+
+    return packs.flatMap(pack => {
+      if (pack.protocol === 2 || pack.protocol === 3) {
+        return pack.data as typeof packs
+      }
+      return pack
+    })
+  }
+
+  return decoder
+}
+
+type EncodeType = 'heartbeat' | 'join'
+
+
+const socket = new WebSocket("wss://broadcastlv.chat.bilibili.com/sub");
+
+// 监听连接成功事件
+socket.onopen = () => {
+  console.log("WebSocket 连接已建立");
+  const hexString = "0000003f0010000100000007000000017b22756964223a32323637373131372c22726f6f6d6964223a31313035333031302c2270726f746f766572223a307d";
+
+// 将十六进制字符串解码为字节数组
+const byteArray = new Uint8Array(hexString.match(/.{1,2}/g).map(byte => parseInt(byte, 16)));
+
+// 创建 Uint8Array 对象
+const uint8Array = new Uint8Array(byteArray);
+
+// 获取 ArrayBuffer
+const arrayBuffer = uint8Array.buffer;
+  sendBinaryMessage(arrayBuffer);
+    setInterval(() => {
+        var map = "000000120010000100000002000000017b7d".match(/.{1,2}/g);
+        if(map!=null){
+            const byteArray = new Uint8Array(map.map(byte => parseInt(byte, 16)));
+
+            // 创建 Uint8Array 对象
+            const uint8Array = new Uint8Array(byteArray);
+
+            // 获取 ArrayBuffer
+            const arrayBuffer = uint8Array.buffer;
+            sendBinaryMessage(arrayBuffer);
+        }
+    }, 20000);
+};
+// 监听接收消息事件
+socket.onmessage = (event) => {
+    const message = event;
+    function promiseToArrayBuffer(promise) {
+        return promise.then((result) => {
+          if (result instanceof ArrayBuffer) {
+            return result;
+          } else if (result instanceof Blob) {
+            return new Promise((resolve, reject) => {
+              const reader = new FileReader();
+      
+              reader.onload = () => {
+                const arrayBuffer = reader.result;
+                const adjustedArrayBuffer = adjustArrayBuffer(arrayBuffer);
+                resolve(adjustedArrayBuffer);
+              };
+      
+              reader.onerror = () => {
+                const arrayBuffer = reader.result;
+                const adjustedArrayBuffer = adjustArrayBuffer(arrayBuffer);
+                resolve(adjustedArrayBuffer);
+              };
+      
+              reader.readAsArrayBuffer(result);
+            });
+          } else {
+            throw new Error('Invalid result type. Expected ArrayBuffer or Blob.');
+          }
+        });
+      }
+      
+      function adjustArrayBuffer(arrayBuffer) {
+        const byteLength = arrayBuffer.byteLength;
+        const adjustedLength = Math.ceil(byteLength / 8) * 8;
+        if (byteLength === adjustedLength) {
+          return arrayBuffer;
+        }
+      
+        const adjustedArrayBuffer = new ArrayBuffer(adjustedLength);
+        const sourceArray = new Uint8Array(arrayBuffer);
+        const targetArray = new Uint8Array(adjustedArrayBuffer);
+        targetArray.set(sourceArray);
+      
+        return adjustedArrayBuffer;
+      }
+    promiseToArrayBuffer(event.data.arrayBuffer())
+        .then((arrayBuffer) => {
+            console.log("12312321",arrayBuffer);
+            const packs = makeDecoder()(Buffer.from(arrayBuffer))
+            console.log("packs:",packs);
+        })
+        .catch((error) => {
+            console.error(error);
+        });
+    
+};
+
+// 监听连接关闭事件
+socket.onclose = () => {
+  console.log("WebSocket 连接已关闭");
+};
+
+// 监听连接错误事件
+socket.onerror = (error) => {
+  console.error("WebSocket 错误:", error);
+};
+
+// 发送消息
+function sendBinaryMessage(data: ArrayBuffer | Blob) {
+  socket.send(data);
+}
+
+// 关闭连接
+function closeConnection() {
+  socket.close();
+}
+</script>
+
+<template>
+    <div>
+        <div class="list-container song-styles-back-retroeuro">
+            <ul class="list">
+                <li v-for="item in {items}" :key="item.id">{{ item.name }}{{ item.name2 }}</li>
+            </ul>
+        </div>
+  </div>
+</template>
+
+<style>
+#app {
+    font-family: Avenir, Helvetica, Arial, sans-serif;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    text-align: center;
+    color: #2c3e50;
+    margin-top: 60px;
+}
+.form {
+    display: flex;
+    flex-direction: column;
+}
+.form input,
+.form button {
+    width: 400px;
+    height: 50px;
+    margin: 10px 0;
+}
+.song-styles-back-retroeuro {
+    width: 500px;
+    height: 600px;
+    border-image: url(https://s8.i0f.cn/images/widget/chat/blive/retroeuro.png) stretch;
+    border-image-slice: 160 fill;
+    border-image-width: 160px;
+    border-image-outset: 80px;
+    padding: 40px 0 20px;
+    z-index: 99
+}
+.list-container {
+  overflow-y: auto;
+}
+</style>
